@@ -6,7 +6,7 @@ OUTD="./output"
 BAM="/data/HCC1954.NORMAL.30x.compare.COST16011_region.bam"
 REF="/data/Homo_sapiens_assembly19.COST16011_region.fa"
 
-PROCESS="/opt/GATK_GermlineCaller/src/process_sample_parallel.sh"
+PROCESS="/opt/Varscan_GermlineCaller/src/process_sample_parallel.sh"
 
 # Using python to get absolute path of DATD.  On Linux `readlink -f` works, but on Mac this is not always available
 # see https://stackoverflow.com/questions/1055671/how-can-i-get-the-behavior-of-gnus-readlink-f-on-a-mac
