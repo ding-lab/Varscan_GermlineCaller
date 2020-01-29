@@ -1,2 +1,2 @@
 
-IMAGE="mwyczalkowski/gatk_germlinecaller"
+IMAGE="mwyczalkowski/varscan_germlinecaller"
