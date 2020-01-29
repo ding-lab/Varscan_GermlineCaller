@@ -3,7 +3,7 @@ cwlVersion: v1.0
 id: somatic_sv_workflow
 baseCommand:
   - /bin/bash
-  - /opt/GATK_GermlineCaller/src/process_sample_parallel.sh
+  - /opt/Varscan_GermlineCaller/src/process_sample_parallel.sh
 inputs:
   - id: reference
     type: File
@@ -12,7 +12,6 @@ inputs:
     label: Reference FASTA
     secondaryFiles:
       - .fai
-      - ^.dict
   - id: bam
     type: File
     inputBinding:
@@ -39,6 +38,13 @@ inputs:
       prefix: '-d'
     label: dry run
     doc: 'Print out commands but do not execute, for testing only'
+  - id: index_output
+    type: boolean?
+    inputBinding:
+      position: 0
+      prefix: '-I'
+    label: Index output
+    doc: 'Compress and index output VCF files'
   - id: finalize
     type: boolean?
     inputBinding:
@@ -46,37 +52,37 @@ inputs:
       prefix: '-F'
     label: finalize
     doc: 'Compress intermediate data and logs'
-  - id: HC_ARGS
+  - id: MP_ARGS
     type: string?
     inputBinding:
       position: 0
       prefix: '-C'
-    label: GATK HaplotypeCaller arguments
-  - id: SV_SNP_ARGS
+    label: samtools mpileup arguments
+  - id: JAVA_ARGS
     type: string?
     inputBinding:
       position: 0
-      prefix: '-R'
-    label: SelectVariants SNP arguments
-  - id: SV_INDEL_ARGS
+      prefix: '-D'
+    label: java arguments
+  - id: VS_ARGS
     type: string?
     inputBinding:
       position: 0
-      prefix: '-S'
-    label: SelectVariants INDEL arguments
+      prefix: '-E'
+    label: Varscan mpileup2indel and mpileup2snp arguments
 outputs:
   - id: snp_vcf
     type: File?
     outputBinding:
-      glob: output/GATK.snp.Final.vcf
+      glob: ${if (inputs.index_output ) {return "output/Varscan.snp.Final.vcf.gz" } else {return "output/Varscan.snp.Final.vcf"}}
   - id: indel_vcf
     type: File?
     outputBinding:
-      glob: output/GATK.indel.Final.vcf
+      glob: ${if (inputs.index_output ) {return "output/Varscan.indel.Final.vcf.gz" } else {return "output/Varscan.indel.Final.vcf"}}
 label: GATK_GermlineCaller
 requirements:
   - class: ResourceRequirement
     ramMin: 8000
   - class: DockerRequirement
-    dockerPull: mwyczalkowski/gatk_germlinecaller
+    dockerPull: mwyczalkowski/varscan_germlinecaller
   - class: InlineJavascriptRequirement

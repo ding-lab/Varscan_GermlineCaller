@@ -1,5 +1,5 @@
 cd ../../..
-CWL="cwl/GATK_GermlineCaller.cwl"
+CWL="cwl/Varscan_GermlineCaller.cwl"
 YAML="testing/cwl_call/demo.yaml"
 
 mkdir -p results

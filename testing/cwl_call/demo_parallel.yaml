@@ -7,5 +7,6 @@ reference:
 chrlist:
   class: File
   path: ../demo_data/chrlist.dat
-HC_ARGS: "--standard-min-confidence-threshold-for-calling 30.0"
 finalize: true
+index_output: true
+
