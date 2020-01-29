@@ -4,15 +4,15 @@
 # https://dinglab.wustl.edu/
 
 read -r -d '' USAGE <<'EOF'
-Run GATK germline caller, possibly for multiple intervals in parallel,
+Run Varscan germline caller, possibly for multiple intervals in parallel,
 and generate one VCF file for SNVs and one for INDELs
 
 Usage: 
   process_sample_parallel.sh [options] REF BAM
 
 Output: 
-    OUTD/GATK.snp.Final.vcf
-    OUTD/GATK.indel.Final.vcf
+    OUTD/Varscan.snp.Final.vcf
+    OUTD/Varscan.indel.Final.vcf
 
 Options:
 -h : print usage information
@@ -22,36 +22,35 @@ Options:
 -j JOBS: if parallel run, number of jobs to run at any one time.  If 0, run sequentially.  Default: 4
 -o OUTD: set output root directory.  Default ./output
 -F : finalize run by compressing per-region output and logs
+-I: Index output files.  Note that the VCF files will be compressed, end in .gz
 
 The following arguments are passed to process_sample.sh directly:
--C HC_ARGS : pass args to `gatk HaplotypeCaller`
--R SV_SNP_ARGS : pass SV_SNP_ARGS to `gatk SelectVariants -select-type SNP -select-type MNP`
--S SV_INDEL_ARGS : pass SV_INDEL_ARGS to `gatk SelectVariants -select-type INDEL`
+-C MP_ARGS : pass args to `samtools mpileup`
+-D JAVA_ARGS : pass args to java
+-E VS_ARGS: pass args to mpileup2indel and mpileup2snp
 
 For single region, calls look like,:
-  gatk HaplotypeCaller -R REF -I BAM 
-  gatk SelectVariants -O GATK.snp.Final.vcf -select-type SNP -select-type MNP 
-  gatk SelectVariants -O GATK.indel.Final.vcf -select-type INDEL
+samtools mpileup -q 1 -Q 13 BAM | java -jar VarScan.jar mpileup2snp - --min-coverage 3 --min-var-freq 0.10 --p-value 0.10 --strand-filter 1 --output-vcf 1 
+samtools mpileup -q 1 -Q 13 BAM | java -jar VarScan.jar mpileup2indel - --min-coverage 3 --min-var-freq 0.10 --p-value 0.10 --strand-filter 1 --output-vcf 1 
 
 For multiple regions (specified by -c CHRLIST), calls are like,
   for CHR in CHRLIST
-    gatk HaplotypeCaller -R REF -I BAM -L CHR
-    gatk SelectVariants -O CHR_SNP -select-type SNP -select-type MNP 
-    gatk SelectVariants -O CHR_INDEL -select-type INDEL
-  bcftools concat -o GATK.snp.Final.vcf
-  bcftools concat -o GATK.indel.Final.vcf
+    samtools mpileup -q 1 -Q 13 -r CHR BAM | java -jar VarScan.jar mpileup2snp - --min-coverage 3 --min-var-freq 0.10 --p-value 0.10 --strand-filter 1 --output-vcf 1 
+
+  bcftools concat -o Varscan.snp.Final.vcf
+  bcftools concat -o Varscan.indel.Final.vcf
 
 CHRLIST is a file listing genomic intervals over which to operate, with each
 line passed to `gatk HaplotypeCaller -L`. 
 
 In general, if CHRLIST is defined, jobs will be submitted in parallel mode: use
 GNU parallel to loop across all entries in CHRLIST, running -j JOBS at a time,
-and wait until all jobs completed.  Output logs written to OUTD/logs/GATK.$CHR.log
+and wait until all jobs completed.  Output logs written to OUTD/logs/Varscan.$CHR.log
 Parallel mode can be disabled with -j 0.
 
 EOF
 
-source /opt/GATK_GermlineCaller/src/utils.sh
+source /opt/Varscan_GermlineCaller/src/utils.sh
 SCRIPT=$(basename $0)
 
 # Background on `parallel` and details about blocking / semaphores here:
@@ -63,11 +62,11 @@ SCRIPT=$(basename $0)
 NJOBS=4
 DO_PARALLEL=0
 OUTD="./output"
-PROCESS="/opt/GATK_GermlineCaller/src/process_sample.sh"
-BCFTOOLS="/opt/miniconda/bin/bcftools"
+PROCESS="/opt/Varscan_GermlineCaller/src/process_sample.sh"
+BCFTOOLS="/opt/conda/bin/bcftools"
 
 # http://wiki.bash-hackers.org/howto/getopts_tutorial
-while getopts ":hd1c:j:o:C:R:S:F" opt; do
+while getopts ":hd1c:j:o:C:D:E:FI" opt; do
   case $opt in
     h)
       echo "$USAGE"
@@ -93,14 +92,17 @@ while getopts ":hd1c:j:o:C:R:S:F" opt; do
     C) 
       PS_ARGS="$PS_ARGS -C \"$OPTARG\""
       ;;
-    R) 
-      PS_ARGS="$PS_ARGS -R \"$OPTARG\""
+    D) 
+      PS_ARGS="$PS_ARGS -D \"$OPTARG\""
       ;;
-    S) 
-      PS_ARGS="$PS_ARGS -S \"$OPTARG\""
+    E) 
+      PS_ARGS="$PS_ARGS -E \"$OPTARG\""
       ;;
     F) 
       FINALIZE=1
+      ;;
+    I)  # binary argument
+      DO_INDEX=1
       ;;
     \?)
       >&2 echo "$SCRIPT: ERROR: Invalid option: -$OPTARG"
@@ -147,7 +149,7 @@ if [ ! "$NO_CHRLIST" ]; then
     mkdir -p $OUTDR
 fi
 
-# CHRLIST newline-separated list of regions passed to GATK HaplotypeCaller -L 
+# CHRLIST newline-separated list of regions passed to samtools mpileup -r
 LOGD="$OUTD/logs"
 mkdir -p $LOGD
 
@@ -173,18 +175,22 @@ for CHR in $CHRLIST; do
     NOW=$(date)
     >&2 echo \[ $NOW \] : Processing $CHR
 
-    STDOUT_FN="$LOGD/GATK_GermlineCaller.$CHR.out"
-    STDERR_FN="$LOGD/GATK_GermlineCaller.$CHR.err"
+    STDOUT_FN="$LOGD/Varscan_GermlineCaller.$CHR.out"
+    STDERR_FN="$LOGD/Varscan_GermlineCaller.$CHR.err"
 
     # core call to process_sample.sh
     if [ "$NO_CHRLIST" ]; then
-        CMD="$PROCESS $PS_ARGS -o $OUTD -l Final $REF $BAM > $STDOUT_FN 2> $STDERR_FN"
+        if [ $DO_INDEX ]; then 
+            XARG="-I"
+        fi
+        CMD="$PROCESS $PS_ARGS $XARGS -o $OUTD -l Final $REF $BAM > $STDOUT_FN 2> $STDERR_FN"
     else
-        CMD="$PROCESS $PS_ARGS -o $OUTDR -L $CHR $REF $BAM > $STDOUT_FN 2> $STDERR_FN"
+        # if looping across regions, always index so that bcftools works
+        CMD="$PROCESS $PS_ARGS -I -o $OUTDR -L $CHR $REF $BAM > $STDOUT_FN 2> $STDERR_FN"
     fi
 
     if [ $DO_PARALLEL == 1 ]; then
-        JOBLOG="$LOGD/GATK_GermlineCaller.$CHR.log"
+        JOBLOG="$LOGD/Varscan_GermlineCaller.$CHR.log"
         CMD=$(echo "$CMD" | sed 's/"/\\"/g' )   # This will escape the quotes in $CMD
         CMD="parallel --semaphore -j$NJOBS --id $MYID --joblog $JOBLOG --tmpdir $LOGD \"$CMD\" "
     fi
@@ -203,34 +209,45 @@ if [ $DO_PARALLEL == 1 ]; then
     run_cmd "$CMD" $DRYRUN
 fi
 
+OUT_SNP="$OUTD/Varscan.snp.Final.vcf"
+OUT_INDEL="$OUTD/Varscan.indel.Final.vcf"
 # Now merge if we are looping over regions in CHRLIST
 # Merged output will have same filename as if CHR were "Final"
 # testing for globs from https://stackoverflow.com/questions/2937407/test-whether-a-glob-has-any-matches-in-bash
 if [ ! "$NO_CHRLIST" ]; then
 
     # First merge the snp
-    PATTERN="$OUTDR/GATK.snp.*.vcf"
+    PATTERN="$OUTDR/Varscan.snp.*.vcf.gz"
     if stat -t $PATTERN >/dev/null 2>&1; then
         IN=`ls $PATTERN`
-        OUT="$OUTD/GATK.snp.Final.vcf"
-        CMD="$BCFTOOLS concat -o $OUT $IN"
+        CMD="$BCFTOOLS concat -o $OUT_SNP $IN"
         run_cmd "$CMD" $DRYRUN
-        >&2 echo Final SNP output : $OUT
+        >&2 echo Final SNP output : $OUT_SNP
     else
         >&2 echo $SCRIPT : snp merge: no output found matching $PATTERN
     fi
 
     # then merge the indel
-    PATTERN="$OUTDR/GATK.indel.*.vcf"
+    PATTERN="$OUTDR/Varscan.indel.*.vcf.gz"
     if stat -t $PATTERN >/dev/null 2>&1; then
         IN=`ls $PATTERN`
-        OUT="$OUTD/GATK.indel.Final.vcf"
-        CMD="$BCFTOOLS concat -o $OUT $IN"
+        CMD="$BCFTOOLS concat -o $OUT_INDEL $IN"
         run_cmd "$CMD" $DRYRUN
-        >&2 echo Final INDEL output : $OUT
+        >&2 echo Final INDEL output : $OUT_INDEL
     else
         >&2 echo $SCRIPT : indel merge: no output found matching $PATTERN
     fi
+fi
+
+# compress and index output files
+if [ $DO_INDEX ]; then
+    >&2 echo Compressing and indexing $OUT_SNP and $OUT_INDEL
+    CMD="/opt/conda/bin/bgzip $OUT_SNP && /opt/conda/bin/bcftools index $OUT_SNP.gz"
+    run_cmd "$CMD" $DRYRUN
+    CMD="/opt/conda/bin/bgzip $OUT_INDEL && /opt/conda/bin/bcftools index $OUT_INDEL.gz"
+    run_cmd "$CMD" $DRYRUN
+    OUT_SNP="$OUT_SNP.gz"
+    OUT_INDEL="$OUT_INDEL.gz"
 fi
 
 if [[ "$FINALIZE" ]] ; then

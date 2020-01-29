@@ -16,6 +16,7 @@ Options:
 -l INTERVAL_LABEL : A short label for interval, used for filenames.  Default is INPUT_INTERVAL
 -o OUTD : Output directory [ ./output ]
 -N : Write output of samtools mpileup to intermediate file rather than use pipes
+-I: Index output files.  Note that the VCF files will be compressed, end in .gz
 
 General format of command is,
 samtools mpileup -q 1 -Q 13 BAM | java -jar VarScan.jar mpileup2indel - --min-coverage 3 --min-var-freq 0.10 --p-value 0.10 --strand-filter 1 --output-vcf 1 
@@ -36,7 +37,7 @@ OUTD="./output"
 OUTVCF="final.SV.WGS.vcf"
 
 # http://wiki.bash-hackers.org/howto/getopts_tutorial
-while getopts ":hdC:D:E:L:l:o:N" opt; do
+while getopts ":hdC:D:E:L:l:o:NI" opt; do
   case $opt in
     h)
       echo "$USAGE"
@@ -65,6 +66,9 @@ while getopts ":hdC:D:E:L:l:o:N" opt; do
       ;;
     N)  # binary argument
       NO_PIPE=1
+      ;;
+    I)  # binary argument
+      DO_INDEX=1
       ;;
     \?)
       >&2 echo "Invalid option: -$OPTARG"
@@ -99,7 +103,11 @@ confirm $REF
 if [ "$INTERVAL_LABEL" ]; then
     IX="$INTERVAL_LABEL"
 else
-    IX="$INPUT_INTERVAL"
+    if [ "$INPUT_INTERVAL" ]; then
+        IX="$INPUT_INTERVAL"
+    else
+        IX="Final"
+    fi
 fi
 
 VARSCAN="/usr/bin/java $JAVA_ARGS -jar $JAR "
@@ -121,7 +129,7 @@ LOG_INDEL="$OUTD/Varscan.indel.${IX}.log"
 
 CMD1="$SAMTOOLS mpileup $MP_ARGS -f $REF $BAM" 
 CMD2="$VARSCAN mpileup2snp - $VS_ARGS > $OUT_SNP 2> $LOG_SNP"
-CMD3="$VARSCAN mpileup2snp - $VS_ARGS > $OUT_INDEL 2> $LOG_INDEL"
+CMD3="$VARSCAN mpileup2indel - $VS_ARGS > $OUT_INDEL 2> $LOG_INDEL"
 
 if [ $NO_PIPE ]; then
     OUT1="$OUTD/mpileup.${IX}.out"
@@ -145,13 +153,17 @@ fi
 #    shell: "samtools mpileup -q 1 -Q 13 -f {input.genome_fa} -r {params.chr} {input.bam} | varscan mpileup2snp - --min-coverage 3 --min-var-freq 0.10 --p-value 0.10 --strand-filter 1 --output-vcf 1 > {output} 2>{log}"
 #    shell: "samtools mpileup -q 1 -Q 13 -f {input.genome_fa} -r {params.chr} {input.bam} | varscan mpileup2indel - --min-coverage 3 --min-var-freq 0.10 --p-value 0.10 --strand-filter 1 --output-vcf 1 > {output} 2>{log}"
 
-
-# Run SelectVariants
-CMD2A="$GATK SelectVariants -R $REF -V $OUT1 -O $OUT2A -select-type SNP -select-type MNP $SV_SNP_ARGS"
-CMD2B="$GATK SelectVariants -R $REF -V $OUT1 -O $OUT2B -select-type INDEL $SV_INDEL_ARGS"
-run_cmd "$CMD2A" $DRYRUN
-run_cmd "$CMD2B" $DRYRUN
+# compress and index output files
+if [ $DO_INDEX ]; then
+    >&2 echo Compressing and indexing $OUT_SNP and $OUT_INDEL
+    CMD="/opt/conda/bin/bgzip $OUT_SNP && /opt/conda/bin/bcftools index $OUT_SNP.gz"
+    run_cmd "$CMD" $DRYRUN
+    CMD="/opt/conda/bin/bgzip $OUT_INDEL && /opt/conda/bin/bcftools index $OUT_INDEL.gz"
+    run_cmd "$CMD" $DRYRUN
+    OUT_SNP="$OUT_SNP.gz"
+    OUT_INDEL="$OUT_INDEL.gz"
+fi
 
 >&2 echo $SCRIPT success.
->&2 echo Written SNP to $OUT2A 
->&2 echo Written INDEL to $OUT2B
+>&2 echo Written SNP to $OUT_SNP 
+>&2 echo Written INDEL to $OUT_INDEL
