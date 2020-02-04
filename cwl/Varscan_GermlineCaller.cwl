@@ -1,6 +1,6 @@
 class: CommandLineTool
 cwlVersion: v1.0
-id: somatic_sv_workflow
+id: Varscan_GermlineCaller
 baseCommand:
   - /bin/bash
   - /opt/Varscan_GermlineCaller/src/process_sample_parallel.sh
@@ -79,7 +79,7 @@ outputs:
     type: File?
     outputBinding:
       glob: ${if (inputs.index_output ) {return "output/Varscan.indel.Final.vcf.gz" } else {return "output/Varscan.indel.Final.vcf"}}
-label: GATK_GermlineCaller
+label: Varscan_GermlineCaller
 requirements:
   - class: ResourceRequirement
     ramMin: 8000
