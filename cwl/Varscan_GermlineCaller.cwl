@@ -38,12 +38,12 @@ inputs:
       prefix: '-d'
     label: dry run
     doc: 'Print out commands but do not execute, for testing only'
-  - id: index_output
+  - id: compress_output
     type: boolean?
     inputBinding:
       position: 0
       prefix: '-I'
-    label: Index output
+    label: Compress output
     doc: 'Compress and index output VCF files'
   - id: finalize
     type: boolean?
@@ -74,11 +74,11 @@ outputs:
   - id: snp_vcf
     type: File?
     outputBinding:
-      glob: ${if (inputs.index_output ) {return "output/Varscan.snp.Final.vcf.gz" } else {return "output/Varscan.snp.Final.vcf"}}
+      glob: ${if (inputs.compress_output ) {return "output/Varscan.snp.Final.vcf.gz" } else {return "output/Varscan.snp.Final.vcf"}}
   - id: indel_vcf
     type: File?
     outputBinding:
-      glob: ${if (inputs.index_output ) {return "output/Varscan.indel.Final.vcf.gz" } else {return "output/Varscan.indel.Final.vcf"}}
+      glob: ${if (inputs.compress_output ) {return "output/Varscan.indel.Final.vcf.gz" } else {return "output/Varscan.indel.Final.vcf"}}
 label: Varscan_GermlineCaller
 requirements:
   - class: ResourceRequirement

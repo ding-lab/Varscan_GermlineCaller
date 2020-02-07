@@ -22,7 +22,7 @@ Options:
 -j JOBS: if parallel run, number of jobs to run at any one time.  If 0, run sequentially.  Default: 4
 -o OUTD: set output root directory.  Default ./output
 -F : finalize run by compressing per-region output and logs
--I: Index output files.  Note that the VCF files will be compressed, end in .gz
+-I: Compress and index output files.  VCF files will have suffix .gz
 
 The following arguments are passed to process_sample.sh directly:
 -C MP_ARGS : pass args to `samtools mpileup`

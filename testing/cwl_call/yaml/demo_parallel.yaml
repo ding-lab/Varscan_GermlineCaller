@@ -8,5 +8,5 @@ chrlist:
   class: File
   path: ../../demo_data/chrlist.dat
 finalize: true
-index_output: true
+compress_output: true
 
