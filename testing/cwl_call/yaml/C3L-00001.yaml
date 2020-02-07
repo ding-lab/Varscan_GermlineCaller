@@ -1,0 +1,11 @@
+bam:
+  class: File
+  path: /gscmnt/gc2619/dinglab_cptac3/GDC_import/data/a0e38199-402a-4ae1-b00d-ec9c67dd51df/1cc7a20f-b05e-4661-95ec-399b3080a02b_gdc_realn.bam
+reference:
+  class: File
+  path: /gscmnt/gc2521/dinglab/mwyczalk/somatic-wrapper-data/image.data/A_Reference/GRCh38.d1.vd1/GRCh38.d1.vd1.fa
+chrlist:
+  class: File
+  path: /gscuser/mwyczalk/projects/TinDaisy/TinDaisy/params/chrlist/GRCh38.d1.vd1.chrlist.txt
+finalize: true
+index_output: true
