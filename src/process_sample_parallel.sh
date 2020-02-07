@@ -64,6 +64,7 @@ DO_PARALLEL=0
 OUTD="./output"
 PROCESS="/opt/Varscan_GermlineCaller/src/process_sample.sh"
 BCFTOOLS="/opt/conda/bin/bcftools"
+BGZIP="/opt/conda/bin/bgzip"
 
 # http://wiki.bash-hackers.org/howto/getopts_tutorial
 while getopts ":hd1c:j:o:C:D:E:FI" opt; do
@@ -242,9 +243,9 @@ fi
 # compress and index output files
 if [ $DO_INDEX ]; then
     >&2 echo Compressing and indexing $OUT_SNP and $OUT_INDEL
-    CMD="/opt/conda/bin/bgzip $OUT_SNP && /opt/conda/bin/bcftools index $OUT_SNP.gz"
+    CMD="$BGZIP $OUT_SNP && $BCFTOOLS index $OUT_SNP.gz"
     run_cmd "$CMD" $DRYRUN
-    CMD="/opt/conda/bin/bgzip $OUT_INDEL && /opt/conda/bin/bcftools index $OUT_INDEL.gz"
+    CMD="$BGZIP $OUT_INDEL && $BCFTOOLS index $OUT_INDEL.gz"
     run_cmd "$CMD" $DRYRUN
     OUT_SNP="$OUT_SNP.gz"
     OUT_INDEL="$OUT_INDEL.gz"
