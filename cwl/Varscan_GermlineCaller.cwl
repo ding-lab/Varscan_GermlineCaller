@@ -84,5 +84,5 @@ requirements:
   - class: ResourceRequirement
     ramMin: 8000
   - class: DockerRequirement
-    dockerPull: mwyczalkowski/varscan_germlinecaller
+    dockerPull: mwyczalkowski/varscan_germlinecaller:20200608
   - class: InlineJavascriptRequirement

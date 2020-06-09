@@ -1,2 +1,2 @@
 
-IMAGE="mwyczalkowski/varscan_germlinecaller"
+IMAGE="mwyczalkowski/varscan_germlinecaller:20200608"
