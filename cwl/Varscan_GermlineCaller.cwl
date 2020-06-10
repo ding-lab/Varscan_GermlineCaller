@@ -1,6 +1,6 @@
 class: CommandLineTool
 cwlVersion: v1.0
-id: Varscan_GermlineCaller
+id: varscan_germlinecaller
 baseCommand:
   - /bin/bash
   - /opt/Varscan_GermlineCaller/src/process_sample_parallel.sh
