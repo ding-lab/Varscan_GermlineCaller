@@ -16,20 +16,21 @@ inputs:
     type: File
     inputBinding:
       position: 2
-    label: Input BAM/CRAM
+    label: Input BAM
     secondaryFiles: ${if (self.nameext === ".bam") {return self.basename + ".bai"} else {return self.basename + ".crai"}}
   - id: chrlist
     type: File?
     inputBinding:
       position: 0
       prefix: '-c'
-    label: List of genomic regions
+    doc: List of genomic regions
+    label: Genomic regions
   - id: njobs
     type: int?
     inputBinding:
       position: 0
       prefix: '-j'
-    label: Parallel job count
+    label: N parallel jobs
     doc: 'Number of jobs to run in parallel mode'
   - id: dryrun
     type: boolean?
@@ -57,19 +58,21 @@ inputs:
     inputBinding:
       position: 0
       prefix: '-C'
-    label: samtools mpileup arguments
+    doc: samtools mpileup arguments
+    label: mpileup args
   - id: JAVA_ARGS
     type: string?
     inputBinding:
       position: 0
       prefix: '-D'
-    label: java arguments
+    label: JAVA args
   - id: VS_ARGS
     type: string?
     inputBinding:
       position: 0
       prefix: '-E'
-    label: Varscan mpileup2indel and mpileup2snp arguments
+    doc: Varscan mpileup2indel and mpileup2snp arguments
+    label: mpileup2 args
 outputs:
   - id: snp_vcf
     type: File?
